@@ -16,7 +16,6 @@ import aiofiles
 
 import time
 
-
 # 信号量
 sem = asyncio.Semaphore(30)
 
@@ -33,6 +32,16 @@ BASE_PATH = '/home/jx/Videos/m3u8/ts_2_mp4/'
 url = "https://72vod.150564.com/201907/7166d4f5/index.m3u8"
 
 
+def get_m3u8_key_iv(m3u8_obj):
+    try:
+        key_context, iv_context = requests.get(m3u8_obj.base_uri + m3u8_obj.keys[0].uri).content, m3u8_obj.keys[0].iv
+        key_context = key_context.decode('utf-8')
+    except Exception as e:
+        key_context, iv_context = False, False
+
+    return key_context, iv_context
+
+
 # 多进程
 def download_m3u8(m3u8_url):
     m3u8_obj = m3u8.load(m3u8_url, headers=headers)
@@ -41,8 +50,11 @@ def download_m3u8(m3u8_url):
     pool = Pool(processes=multiprocessing.cpu_count())
     # pool.map_async(download_m3u8_ts_file, m3u8_obj.segments)
 
+    key_context, iv_context = get_m3u8_key_iv(m3u8_obj)
+
     for index_m3u8, m3u8_obj_segments in enumerate(m3u8_obj.segments):
-        pool.apply_async(download_m3u8_ts_file, args=(base_path, m3u8_obj_segments, str(index_m3u8 + 1), m3u8_obj))
+        pool.apply_async(download_m3u8_ts_file,
+                         args=(base_path, m3u8_obj_segments, str(index_m3u8 + 1), key_context, iv_context))
     pool.close()
     pool.join()
 
@@ -50,20 +62,15 @@ def download_m3u8(m3u8_url):
 
 
 # 下载文件
-def download_m3u8_ts_file(base_path, m3u8_obj_segments, index_m3u8, m3u8_obj):
-    try:
-        key, iv = m3u8_obj.keys[0].uri, m3u8_obj.keys[0].iv
-    except Exception as e:
-        key, iv = False, False
-
+def download_m3u8_ts_file(base_path, m3u8_obj_segments, index_m3u8, key_context, iv_context):
     ts_link, ts_name = m3u8_obj_segments.base_uri + m3u8_obj_segments.uri, m3u8_obj_segments.uri
     with open(base_path + index_m3u8 + '.ts', 'wb') as f:
         tmp = requests.get(ts_link, headers=headers)
         tmp_data = tmp.content
 
         # 解密
-        if key:
-            decrypt_data = decrypt_ts_file(tmp_data, key, iv)
+        if key_context:
+            decrypt_data = decrypt_ts_file(tmp_data, key_context, iv_context)
         else:
             decrypt_data = tmp_data
         print('download: ', index_m3u8)
@@ -87,14 +94,14 @@ async def download_m3u8_async(m3u8_url):
         ts_link, ts_name = m3u8_obj_segments.base_uri + m3u8_obj_segments.uri, m3u8_obj_segments.uri
         await download_m3u8_ts_file_async(base_path, ts_link, str(index_m3u8))
 
-    await merge_ts_2_mp4(base_path)
+    merge_ts_2_mp4(base_path)
 
 
 # 异步下载
 async def download_m3u8_ts_file_async(base_path, ts_link, index_m3u8):
     async with aiohttp.ClientSession() as session:
         async with session.request('GET', ts_link, headers=headers) as resp:
-            with open(base_path + index_m3u8 + 'ts', 'wb') as f:
+            with open(base_path + index_m3u8 + '.ts', 'wb') as f:
                 tmp = await resp.read()
                 f.write(tmp)
 
@@ -118,9 +125,11 @@ def main_download_m3u8(urls):
 def download_m3u8_multi_threading(m3u8_url):
     m3u8_obj = m3u8.load(m3u8_url, headers=headers)
     base_path = mkdir_m3u8_file(m3u8_obj)
+    key_context, iv_context = get_m3u8_key_iv(m3u8_obj)
     thread_ids = []
     for index_m3u8, m3u8_obj_segments in enumerate(m3u8_obj.segments):
-        t = threading.Thread(target=download_m3u8_ts_file, args=(base_path, m3u8_obj_segments, str(index_m3u8 + 1), m3u8_obj))
+        t = threading.Thread(target=download_m3u8_ts_file,
+                             args=(base_path, m3u8_obj_segments, str(index_m3u8 + 1), key_context, iv_context))
         t.start()
         thread_ids.append(t)
     for x in thread_ids:
@@ -174,9 +183,8 @@ if __name__ == '__main__':
     urls = ["https://72vod.150564.com/201907/7166d4f5/index.m3u8"]
     # urls = ["https://bk.andisk.com/data/3048aa1f-b2fb-4fb7-b452-3ebc96c76374/res/f1826fdb-def2-4dba-a7a1-4afbf5d17491.m3u8"]
     start_time = time.time()
-    main_download_m3u8(urls)
-    # download_m3u8(urls[0])
+    # main_download_m3u8(urls)
+    download_m3u8(urls[0])
     # download_m3u8_multi_threading(urls[0])
     # download_m3u8_multi_threading_queue(urls[0])
     print('cost: ', time.time() - start_time)
-
