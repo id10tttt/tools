@@ -83,16 +83,18 @@ def mkdir_m3u8_file(m3u8_obj):
 async def download_m3u8_async(m3u8_url):
     m3u8_obj = m3u8.load(m3u8_url, headers=headers)
     base_path = mkdir_m3u8_file(m3u8_obj)
-    for m3u8_obj_segments in m3u8_obj.segments:
+    for index_m3u8, m3u8_obj_segments in enumerate(m3u8_obj.segments):
         ts_link, ts_name = m3u8_obj_segments.base_uri + m3u8_obj_segments.uri, m3u8_obj_segments.uri
-        await download_m3u8_ts_file_async(base_path, ts_link, ts_name)
+        await download_m3u8_ts_file_async(base_path, ts_link, str(index_m3u8))
+
+    await merge_ts_2_mp4(base_path)
 
 
 # 异步下载
-async def download_m3u8_ts_file_async(base_path, ts_link, ts_name):
+async def download_m3u8_ts_file_async(base_path, ts_link, index_m3u8):
     async with aiohttp.ClientSession() as session:
         async with session.request('GET', ts_link, headers=headers) as resp:
-            with open(base_path + ts_name, 'wb') as f:
+            with open(base_path + index_m3u8 + 'ts', 'wb') as f:
                 tmp = await resp.read()
                 f.write(tmp)
 
@@ -163,13 +165,14 @@ def merge_ts_2_mp4(base_path):
 
 
 def decrypt_ts_file(data, key, iv):
+    print('key: ', key, 'iv: ', iv)
     decryptor = AES.new(key, AES.MODE_CBC, IV=iv)
     return decryptor.decrypt(data)
 
 
 if __name__ == '__main__':
     urls = ["https://72vod.150564.com/201907/7166d4f5/index.m3u8"]
-    urls = ["https://bk.andisk.com/data/3048aa1f-b2fb-4fb7-b452-3ebc96c76374/res/f1826fdb-def2-4dba-a7a1-4afbf5d17491.m3u8"]
+    # urls = ["https://bk.andisk.com/data/3048aa1f-b2fb-4fb7-b452-3ebc96c76374/res/f1826fdb-def2-4dba-a7a1-4afbf5d17491.m3u8"]
     start_time = time.time()
     main_download_m3u8(urls)
     # download_m3u8(urls[0])
