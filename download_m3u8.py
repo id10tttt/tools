@@ -23,14 +23,6 @@ headers = {
     'User-Agent': 'Mozilla/5.0 (iPad; CPU OS 11_0 like Mac OS X) AppleWebKit/604.1.34 (KHTML, like Gecko) Version/11.0 Mobile/15A5341f Safari/604.1',
 }
 
-# 保存的mp4文件名
-name = "3.mp4"
-
-BASE_PATH = '/home/jx/Videos/m3u8/ts_2_mp4/'
-
-# m3u8文件的url
-url = "https://72vod.150564.com/201907/7166d4f5/index.m3u8"
-
 
 def get_m3u8_key_iv(m3u8_obj):
     try:
@@ -64,7 +56,8 @@ def download_m3u8(m3u8_url):
 # 下载文件
 def download_m3u8_ts_file(base_path, m3u8_obj_segments, index_m3u8, key_context, iv_context):
     ts_link, ts_name = m3u8_obj_segments.base_uri + m3u8_obj_segments.uri, m3u8_obj_segments.uri
-    with open(base_path + index_m3u8 + '.ts', 'wb') as f:
+    # with open(base_path + index_m3u8 + '.ts', 'wb') as f:
+    with open(base_path + ts_name, 'wb') as f:
         tmp = requests.get(ts_link, headers=headers)
         tmp_data = tmp.content
 
@@ -169,8 +162,11 @@ def download_m3u8_ts_file_queue(m3u8_obj_segments, queue):
 def merge_ts_2_mp4(base_path):
     os.chdir(base_path)
     merge_file = 'for ts_id in `ls | sort -n`; do cat $ts_id >> all.mp4; done'
+
+    # ls -1v sort by name
+    merge_file = 'for ts_id in `ls -1v`; do cat $ts_id >> all.mp4; done'
     os.system(merge_file)
-    os.system('rm *.ts')
+    # os.system('rm *.ts')
 
 
 def decrypt_ts_file(data, key, iv):
@@ -181,7 +177,9 @@ def decrypt_ts_file(data, key, iv):
 
 if __name__ == '__main__':
     urls = ["https://72vod.150564.com/201907/7166d4f5/index.m3u8"]
-    # urls = ["https://bk.andisk.com/data/3048aa1f-b2fb-4fb7-b452-3ebc96c76374/res/f1826fdb-def2-4dba-a7a1-4afbf5d17491.m3u8"]
+    urls = ["https://bk.andisk.com/data/3048aa1f-b2fb-4fb7-b452-3ebc96c76374/res/f1826fdb-def2-4dba-a7a1-4afbf5d17491.m3u8"]
+    # urls = ["https://m3u8.cdnpan.com/SyRXtKTd.m3u8"]
+    # urls = ["https://yiqikan.wuyouzuida.com/20190907/287_cec142d9/index.m3u8"]
     start_time = time.time()
     # main_download_m3u8(urls)
     download_m3u8(urls[0])
