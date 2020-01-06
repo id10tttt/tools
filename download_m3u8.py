@@ -164,7 +164,7 @@ def merge_ts_2_mp4(base_path):
     merge_file = 'for ts_id in `ls | sort -n`; do cat $ts_id >> all.mp4; done'
 
     # ls -1v sort by name
-    merge_file = 'for ts_id in `ls -1v`; do cat $ts_id >> all.mp4; done'
+    merge_file = 'for ts_id in `ls -1v *.ts`; do cat $ts_id >> all.mp4; done'
     os.system(merge_file)
     # os.system('rm *.ts')
 
