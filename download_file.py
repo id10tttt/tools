@@ -16,19 +16,30 @@ headers = {
 }
 file_url = 'http://anning.luanniao-zuida.com/1912/%E8%AF%AF%E6%9D%80.TC%E6%B8%85%E6%99%B0v3%E7%89%88.mp4'
 
-r = requests.head(file_url, headers=headers)
-size = int(r.headers['Content-Length'])
+file_url = 'http://down.phpzuida.com/2001/%E5%BE%B7%E5%8F%A4%E6%8B%892020-03.mp4'
 
-split_size = []
-start_size, end_size = 0, 0
-for index_size in range(1, math.ceil(size / chunk_size) + 1):
-    start_size, end_size = end_size + 1 if end_size != 0 else end_size, chunk_size * index_size
-    if end_size > size:
-        end_size = size
-    split_size.append(
-        (start_size, end_size)
-    )
-    print(start_size, end_size)
+
+def get_file_size(download_url):
+    r = requests.head(download_url, headers=headers)
+    size = int(r.headers['Content-Length'])
+    return size
+
+
+def split_part_size(size_number, part_size):
+    if part_size > part_size:
+        return 0, part_size
+    tmp = []
+
+    current_size = 0
+    for x in range(0, size_number, part_size):
+        if current_size > size_number:
+            continue
+        current_part = [current_size + 1, current_size + part_size]
+        current_size += part_size
+        if current_size > size_number:
+            current_part[1] = size_number
+        tmp.append(current_part)
+    return tmp
 
 
 def download_part_file(url, start, end, index_part, base_path):
@@ -57,6 +68,8 @@ if not os.path.exists(base_path):
     os.mkdir(base_path)
 
 thread_ids = []
+size = get_file_size(file_url)
+split_size = split_part_size(size, chunk_size)
 with sem:
     for index_part, part_size in enumerate(split_size):
         sem.acquire()
