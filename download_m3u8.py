@@ -31,7 +31,7 @@ def get_m3u8_key_iv(m3u8_obj):
     except Exception as e:
         key_context, iv_context = False, False
 
-    return key_context, iv_context
+    return key_context, iv_context.decode('hex') if iv_context else iv_context
 
 
 # 多进程
@@ -171,18 +171,18 @@ def merge_ts_2_mp4(base_path):
 
 def decrypt_ts_file(data, key, iv):
     print('key: ', key, 'iv: ', iv)
-    decryptor = AES.new(key, AES.MODE_CBC, IV=iv)
+    decryptor = AES.new(key, AES.MODE_CBC, key)
     return decryptor.decrypt(data)
 
 
 if __name__ == '__main__':
     urls = ["https://72vod.150564.com/201907/7166d4f5/index.m3u8"]
-    urls = ["https://bk.andisk.com/data/3048aa1f-b2fb-4fb7-b452-3ebc96c76374/res/f1826fdb-def2-4dba-a7a1-4afbf5d17491.m3u8"]
+    # urls = ["https://bk.andisk.com/data/3048aa1f-b2fb-4fb7-b452-3ebc96c76374/res/f1826fdb-def2-4dba-a7a1-4afbf5d17491.m3u8"]
     # urls = ["https://m3u8.cdnpan.com/SyRXtKTd.m3u8"]
     # urls = ["https://yiqikan.wuyouzuida.com/20190907/287_cec142d9/index.m3u8"]
     start_time = time.time()
     # main_download_m3u8(urls)
-    download_m3u8(urls[0])
-    # download_m3u8_multi_threading(urls[0])
+    # download_m3u8(urls[0])
+    download_m3u8_multi_threading(urls[0])
     # download_m3u8_multi_threading_queue(urls[0])
     print('cost: ', time.time() - start_time)
