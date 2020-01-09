@@ -44,7 +44,7 @@ class M3u8Download(object):
     def __init__(self, m3u8_url):
         self.m3u8_url = m3u8_url
         self.m3u8_obj = self.get_m3u8_obj()
-        self.base_path = self.mkdir_m3u8_file()
+        self._base_path = self.mkdir_m3u8_file()
         self.m3u8_key = self.get_m3u8_key_iv()[0]
         self.m3u8_iv = self.get_m3u8_key_iv()[1]
 
@@ -126,6 +126,14 @@ class M3u8Download(object):
                 'download file: ': ts_name
             })
             f.write(decrypt_data)
+
+    @property
+    def base_path(self):
+        return self._base_path
+
+    @base_path.setter
+    def base_path(self, base_path):
+        self._base_path = base_path
 
 
 class MultiProcessM3u8Download(M3u8Download):
@@ -249,14 +257,14 @@ if __name__ == '__main__':
                     'f1826fdb-def2-4dba-a7a1-4afbf5d17491.m3u8'
 
     # # 多进程下载
-    downloader = MultiProcessM3u8Download(m3u8_link)
-    downloader.download_m3u8_multi_process()
-    downloader.merge_ts_2_mp4()
+    # downloader = MultiProcessM3u8Download(m3u8_link)
+    # downloader.download_m3u8_multi_process()
+    # downloader.merge_ts_2_mp4()
 
     # # 多线程下载
-    # downloader = MultiThreadingM3u8Download(m3u8_link)
-    # downloader.download_m3u8_multi_threading()
-    # downloader.merge_ts_2_mp4()
+    downloader = MultiThreadingM3u8Download(m3u8_link)
+    downloader.download_m3u8_multi_threading()
+    downloader.merge_ts_2_mp4()
 
     # # 多线程队列
     # downloader = MultiThreadingQueueM3u8Download(m3u8_link)
