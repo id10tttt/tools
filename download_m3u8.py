@@ -10,7 +10,6 @@ import requests
 import logging
 import threading
 import queue
-from optparse import OptionParser
 import aiohttp
 import asyncio
 import time
@@ -22,7 +21,8 @@ _logger = logging.getLogger(__name__)
 sem = asyncio.Semaphore(30)
 
 headers = {
-    'User-Agent': 'Mozilla/5.0 (iPad; CPU OS 11_0 like Mac OS X) AppleWebKit/604.1.34 (KHTML, like Gecko) Version/11.0 Mobile/15A5341f Safari/604.1',
+    'User-Agent': 'Mozilla/5.0 (iPad; CPU OS 11_0 like Mac OS X) AppleWebKit/604.1.34 (KHTML, like Gecko) '
+                  'Version/11.0 Mobile/15A5341f Safari/604.1',
 }
 
 
@@ -36,6 +36,7 @@ def logger_cost_time(func):
         })
         print('cost: ', time.time() - start_time)
         return res
+
     return wrapper
 
 
@@ -65,6 +66,9 @@ class M3u8Download(object):
                                       self.m3u8_obj.keys[0].iv
             key_context = key_context.decode('utf-8')
         except Exception as e:
+            _logger.info({
+                'error': e
+            })
             key_context, iv_context = False, False
 
         return key_context, iv_context.decode('hex') if iv_context else iv_context
@@ -123,19 +127,12 @@ class M3u8Download(object):
             })
             f.write(decrypt_data)
 
-    @property
-    def base_path(self):
-        return self.base_path
-
-    @base_path.setter
-    def base_path(self, save_path):
-        self.base_path = save_path
-
 
 class MultiProcessM3u8Download(M3u8Download):
     """
     多进程下载
     """
+
     def __init__(self, m3u8_url):
         super(MultiProcessM3u8Download, self).__init__(m3u8_url)
 
@@ -156,6 +153,7 @@ class MultiThreadingM3u8Download(M3u8Download):
     """
     多线程下载
     """
+
     def __init__(self, m3u8_url):
         super(MultiThreadingM3u8Download, self).__init__(m3u8_url)
 
@@ -174,6 +172,7 @@ class MultiThreadingQueueM3u8Download(M3u8Download):
     """
     多线程队列
     """
+
     def __init__(self, m3u8_url):
         super(MultiThreadingQueueM3u8Download, self).__init__(m3u8_url)
         self.queue = queue.Queue()
@@ -186,7 +185,7 @@ class MultiThreadingQueueM3u8Download(M3u8Download):
         """
         thread_ids = []
         for m3u8_obj_segments in self.m3u8_obj.segments:
-            t = threading.Thread(target=self.download_m3u8_ts_file_queue, args=(m3u8_obj_segments, ))
+            t = threading.Thread(target=self.download_m3u8_ts_file_queue, args=(m3u8_obj_segments,))
             t.start()
             thread_ids.append(t)
         for x in thread_ids:
@@ -209,6 +208,7 @@ class AsyncM3u8Download(M3u8Download):
     """
     异步多线程
     """
+
     def __init__(self, m3u8_url):
         super(AsyncM3u8Download, self).__init__(m3u8_url)
 
@@ -241,11 +241,12 @@ class AsyncM3u8Download(M3u8Download):
 
 if __name__ == '__main__':
 
-    if sys.argv[1]:
+    try:
         m3u8_link = sys.argv[1]
-    else:
+    except IndexError:
         # m3u8_link = 'https://72vod.150564.com/201907/7166d4f5/index.m3u8'
-        m3u8_link = 'https://bk.andisk.com/data/3048aa1f-b2fb-4fb7-b452-3ebc96c76374/res/f1826fdb-def2-4dba-a7a1-4afbf5d17491.m3u8'
+        m3u8_link = 'https://bk.andisk.com/data/3048aa1f-b2fb-4fb7-b452-3ebc96c76374/res/' \
+                    'f1826fdb-def2-4dba-a7a1-4afbf5d17491.m3u8'
 
     # # 多进程下载
     downloader = MultiProcessM3u8Download(m3u8_link)
