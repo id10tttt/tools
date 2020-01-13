@@ -127,3 +127,4 @@ index-url = https://pypi.tuna.tsinghua.edu.cn/simple
 # install vmware 15.1 patch
 git clone https://github.com/mkubecek/vmware-host-modules.git
 cd vmware-host-modules && git checkout workstation-15.5.1 && make && make install
+/etc/init.d/vmware start
