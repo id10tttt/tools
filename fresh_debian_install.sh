@@ -103,7 +103,7 @@ gnome-boxes ideviceinstaller python3-imobiledevice libimobiledevice-utils libimo
 mc iftop testdisk libxml2-dev libxslt1-dev libsasl2-dev python3-dev libldap2-dev libssl-dev \
 software-properties-common fonts-noto-cjk fonts-noto-core fonts-noto-unhinted \
 ttf-unifont unifont ttf-mscorefonts-installer redis wkhtmltopdf \
-python-dbus python-gobject libpq-dev
+python-dbus python-gobject libpq-dev screen
 
 # npm install
 npm install -g less-plugin-clean-css less
