@@ -103,7 +103,7 @@ gnome-boxes ideviceinstaller python3-imobiledevice libimobiledevice-utils libimo
 mc iftop testdisk libxml2-dev libxslt1-dev libsasl2-dev python3-dev libldap2-dev libssl-dev \
 software-properties-common fonts-noto-cjk fonts-noto-core fonts-noto-unhinted \
 ttf-unifont unifont ttf-mscorefonts-installer redis wkhtmltopdf \
-python-dbus python-gobject libpq-dev screen android-tools-adb adb libimobiledevice-dev
+python-dbus python-gobject libpq-dev screen android-tools-adb adb libimobiledevice-dev v4l-utils
 
 # npm install
 npm install -g less-plugin-clean-css less
@@ -123,3 +123,7 @@ echo "
 [global]
 index-url = https://pypi.tuna.tsinghua.edu.cn/simple
 " > ~/.pip/pip.conf
+
+# install vmware 15.1 patch
+git clone https://github.com/mkubecek/vmware-host-modules.git
+cd vmware-host-modules && git checkout workstation-15.5.1 && make && make install
