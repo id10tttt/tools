@@ -92,7 +92,7 @@ apt install -y fortunes-zh fortunes tilix flameshot gcc make g++ vim git aria2 v
   fonts-wqy-zenhei unrar unzip p7zip gnome-nettool curl sl gimp nmap linux-headers-$(uname -r) plymouth plymouth-themes \
   firmware-linux fonts-symbola ipython3 python3-venv python3-pip libncurses5 vlc libkmod-dev initramfs-tools-core \
   remmina papirus-icon-theme kdenlive i8kutils youtube-dl arc-theme screenfetch skypeforlinux google-chrome-stable \
-  python3-babel python3-dateutil python3-decorator python3-phonenumbers python3-redis sshpass \
+  python3-babel python3-dateutil python3-decorator python3-phonenumbers python3-redis sshpass python3-watchdog \
   python3-docutils python3-feedparser python3-gevent python3-html2text python3-jinja2 python3-lxml python3-mako \
   python3-mock python3-ofxparse python3-passlib python3-pil python3-psutil python3-psycopg2 python3-pydot python3-pyparsing \
   python3-pypdf2 python3-reportlab python3-requests python3-serial python3-tz python3-usb python3-vatnumber python3-celery \
@@ -138,3 +138,5 @@ cp *.bin /lib/firmware/i915/
 update-initramfs -u
 
 # nm-connection-editor can change default wifi hotspot!
+
+pip3 install zeep redis celery inotify ipython3 IPython wheel phonenumbers simplejson
