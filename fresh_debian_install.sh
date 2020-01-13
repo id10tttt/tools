@@ -102,7 +102,7 @@ apt install -y fortunes-zh fortunes tilix flameshot gcc make g++ vim git aria2 v
   gnome-boxes ideviceinstaller python3-imobiledevice libimobiledevice-utils libimobiledevice6 libplist3 ifuse usbmuxd \
   mc iftop testdisk libxml2-dev libxslt1-dev libsasl2-dev python3-dev libldap2-dev libssl-dev \
   software-properties-common fonts-noto-cjk fonts-noto-core fonts-noto-unhinted \
-  ttf-unifont unifont ttf-mscorefonts-installer redis wkhtmltopdf \
+  ttf-unifont unifont ttf-mscorefonts-installer redis wkhtmltopdf dconf-editor \
   python-dbus python-gobject libpq-dev screen android-tools-adb adb libimobiledevice-dev v4l-utils
 
 # npm install
