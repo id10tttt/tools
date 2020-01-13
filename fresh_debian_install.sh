@@ -136,3 +136,5 @@ wget https://git.kernel.org/pub/scm/linux/kernel/git/firmware/linux-firmware.git
 
 cp *.bin /lib/firmware/i915/
 update-initramfs -u
+
+# nm-connection-editor can change default wifi hotspot!
