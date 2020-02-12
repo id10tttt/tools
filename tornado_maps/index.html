@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Maps</title>
+    <!-- <script type="text/javascript" src="https://cdn.bootcss.com/jquery/3.0.0/jquery.min.js"></script> -->
+    <!-- <script type="text/javascript" src="https://assets.pyecharts.org/assets/echarts.min.js"></script> -->
+    <!-- <script type="text/javascript" src="https://assets.pyecharts.org/assets/maps/china.js"></script> -->
+</head>
+<body>
+    <div id="geo_map_id" style="width:900px; height:500px;">
+    </div>
+
+    <script type="text/javascript" src="/static/js/jquery-3.4.1.min.js"></script>
+    <script type="text/javascript" src="/static/js/echarts.min.js"></script>
+    <script type="text/javascript" src="/static/js/china.js"></script>
+    <script>
+        $(
+            function(){
+                var chart_maps = echarts.init(document.getElementById('geo_map_id'), 'white', {renderer: 'canvas'});
+        
+                $(
+                    function(){
+                        fetchData();
+                        // setInterval(fetchData, 12000);
+                    }
+                )
+                function fetchData(){
+                    $.ajax({
+                        type: "GET",
+                        url: "http://127.0.0.1:8889/getMapDirLine",
+                        dataType: "json",
+                        success: function (result) {
+                            chart_maps.setOption(result);
+                        }
+                    });
+                }
+            }
+        )
+    </script>
+</body>
+</html>
