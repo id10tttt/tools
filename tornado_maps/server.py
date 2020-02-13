@@ -44,7 +44,7 @@ def get_all_line(all_location_lat_lang, all_line, all_location_dict):
     for line_id in all_line:
         # 所有线段节点，都必须要有经纬度才行
         if str(line_id[0]) and str(line_id[1]) in all_location_lat_lang.keys():
-            print(line_id)
+            # print(line_id)
             res.append(
                 (all_location_dict.get(str(line_id[0])), all_location_dict.get(str(line_id[1])))
             )
