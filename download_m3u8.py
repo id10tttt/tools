@@ -14,6 +14,7 @@ import aiohttp
 import asyncio
 import time
 from functools import wraps
+from concurrent.futures import ThreadPoolExecutor
 
 _logger = logging.getLogger(__name__)
 
@@ -21,8 +22,7 @@ _logger = logging.getLogger(__name__)
 sem = asyncio.Semaphore(30)
 
 headers = {
-    'User-Agent': 'Mozilla/5.0 (iPad; CPU OS 11_0 like Mac OS X) AppleWebKit/604.1.34 (KHTML, like Gecko) '
-                  'Version/11.0 Mobile/15A5341f Safari/604.1',
+    'User-Agent': 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/79.0.3945.117 Safari/537.36'
 }
 
 
@@ -48,12 +48,22 @@ class M3u8Download(object):
         self.m3u8_key = self.get_m3u8_key_iv()[0]
         self.m3u8_iv = self.get_m3u8_key_iv()[1]
 
+    # TODO: focus on diff resolution
     def get_m3u8_obj(self):
         """
         m3u8
+        playlists: bandwidth and resolution
         :return: m3u8
         """
         m3u8_obj = m3u8.load(self.m3u8_url, headers=headers)
+        if m3u8_obj.data.get('playlists', False):
+            # TODO: for now, only one resolution
+            for playlist_uri in m3u8_obj.data.get('playlists'):
+                _logger.info({
+                    'resolution': playlist_uri
+                })
+                url = m3u8_obj.base_uri + playlist_uri.get('uri')
+                m3u8_obj = m3u8.load(url, headers=headers)
         return m3u8_obj
 
     def get_m3u8_key_iv(self):
@@ -113,6 +123,7 @@ class M3u8Download(object):
         :param m3u8_obj_segments: m3u8 ts 段
         """
         ts_link, ts_name = m3u8_obj_segments.base_uri + m3u8_obj_segments.uri, m3u8_obj_segments.uri
+        print('ts_link, ts_name', ts_link, ts_name)
         with open(self.base_path + ts_name, 'wb') as f:
             tmp = requests.get(ts_link, headers=headers)
             tmp_data = tmp.content
@@ -167,13 +178,17 @@ class MultiThreadingM3u8Download(M3u8Download):
 
     @logger_cost_time
     def download_m3u8_multi_threading(self):
-        thread_ids = []
-        for m3u8_obj_segments in self.m3u8_obj.segments:
-            t = threading.Thread(target=self.download_m3u8_ts_file, args=(m3u8_obj_segments,))
-            t.start()
-            thread_ids.append(t)
-        for x in thread_ids:
-            x.join()
+        # use ThreadPoolExecutor in case too many threader
+        with ThreadPoolExecutor(max_workers=30) as executor:
+            executor.map(self.download_m3u8_ts_file, self.m3u8_obj.segments)
+
+        # thread_ids = []
+        # for m3u8_obj_segments in self.m3u8_obj.segments:
+        #     t = threading.Thread(target=self.download_m3u8_ts_file, args=(m3u8_obj_segments,))
+        #     t.start()
+        #     thread_ids.append(t)
+        # for x in thread_ids:
+        #     x.join()
 
 
 class MultiThreadingQueueM3u8Download(M3u8Download):
@@ -252,9 +267,9 @@ if __name__ == '__main__':
     try:
         m3u8_link = sys.argv[1]
     except IndexError:
-        # m3u8_link = 'https://72vod.150564.com/201907/7166d4f5/index.m3u8'
         m3u8_link = 'https://bk.andisk.com/data/3048aa1f-b2fb-4fb7-b452-3ebc96c76374/res/' \
                     'f1826fdb-def2-4dba-a7a1-4afbf5d17491.m3u8'
+        # m3u8_link = 'https://v.zdubo.com/20200115/FkoHzMWM/index.m3u8'
 
     # # 多进程下载
     # downloader = MultiProcessM3u8Download(m3u8_link)
