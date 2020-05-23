@@ -72,7 +72,10 @@ class M3u8Download(object):
         :return: 返回 key 和 iv
         """
         try:
-            key_context, iv_context = requests.get(self.m3u8_obj.base_uri + self.m3u8_obj.keys[0].uri).content, \
+            if self.m3u8_obj.keys[0].uri.startswith('http'):
+                key_context, iv_context = requests.get(self.m3u8_obj.keys[0].uri).content, self.m3u8_obj.keys[0].iv
+            else:
+                key_context, iv_context = requests.get(self.m3u8_obj.base_uri + self.m3u8_obj.keys[0].uri).content, \
                                       self.m3u8_obj.keys[0].iv
             key_context = key_context.decode('utf-8')
         except Exception as e:
@@ -122,7 +125,11 @@ class M3u8Download(object):
         下载文件
         :param m3u8_obj_segments: m3u8 ts 段
         """
-        ts_link, ts_name = m3u8_obj_segments.base_uri + m3u8_obj_segments.uri, m3u8_obj_segments.uri
+        if m3u8_obj_segments.uri.startswith('http'):
+            ts_link, ts_name = m3u8_obj_segments.uri, m3u8_obj_segments.uri
+        else:
+            ts_link, ts_name = m3u8_obj_segments.base_uri + m3u8_obj_segments.uri, m3u8_obj_segments.uri
+        ts_name = ts_name.replace('/', '_')
         print('ts_link, ts_name', ts_link, ts_name)
         with open(self.base_path + ts_name, 'wb') as f:
             tmp = requests.get(ts_link, headers=headers)
