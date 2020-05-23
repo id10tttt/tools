@@ -115,10 +115,11 @@ class M3u8Download(object):
         按照自然排序 ls -1v
         """
         os.chdir(self.base_path)
-        # ls -1v sort by name
-        merge_file = 'for ts_id in `ls -1v *.ts`; do cat $ts_id >> all.mp4; done'
-        os.system(merge_file)
-        os.system('rm *.ts')
+        if os.path.exists('*.ts'):
+            # ls -1v sort by name
+            merge_file = 'for ts_id in `ls -1v *.ts`; do cat $ts_id >> all.mp4; done'
+            os.system(merge_file)
+            os.system('rm *.ts')
 
     def download_m3u8_ts_file(self, m3u8_obj_segments):
         """
