@@ -1,33 +1,27 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-import m3u8
+
 import os
+import re
 import sys
-from Crypto.Cipher import AES
-from multiprocessing import Pool
-import multiprocessing
 import requests
 import logging
-import threading
 import queue
 import aiohttp
 import asyncio
 import time
-from functools import wraps
 from concurrent.futures import ThreadPoolExecutor
+
+requests.packages.urllib3.disable_warnings()
 
 _logger = logging.getLogger(__name__)
 
-# 信号量
-sem = asyncio.Semaphore(30)
-
-headers = {
-    'User-Agent': 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/79.0.3945.117 Safari/537.36'
+DEFAULT_HEADERS = {
+    'User-Agent': 'Mozilla/5.0 (X11; Fedora; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/86.0.4240.75 Safari/537.36'
 }
 
 
 def logger_cost_time(func):
-    @wraps(func)
     def wrapper(*args, **kwargs):
         start_time = time.time()
         res = func(*args, **kwargs)
@@ -40,261 +34,209 @@ def logger_cost_time(func):
     return wrapper
 
 
-class M3u8Download(object):
-    def __init__(self, m3u8_url):
-        self.m3u8_url = m3u8_url
-        self.m3u8_obj = self.get_m3u8_obj()
-        self._base_path = self.mkdir_m3u8_file()
-        self.m3u8_key = self.get_m3u8_key_iv()[0]
-        self.m3u8_iv = self.get_m3u8_key_iv()[1]
+def make_sum():
+    ts_num = 0
+    while True:
+        yield ts_num
+        ts_num += 1
 
-    # TODO: focus on diff resolution
-    def get_m3u8_obj(self):
-        """
-        m3u8
-        playlists: bandwidth and resolution
-        :return: m3u8
-        """
-        m3u8_obj = m3u8.load(self.m3u8_url, headers=headers)
-        if m3u8_obj.data.get('playlists', False):
-            # TODO: for now, only one resolution
-            for playlist_uri in m3u8_obj.data.get('playlists'):
-                _logger.info({
-                    'resolution': playlist_uri
-                })
-                url = m3u8_obj.base_uri + playlist_uri.get('uri')
-                m3u8_obj = m3u8.load(url, headers=headers)
-        return m3u8_obj
 
-    def get_m3u8_key_iv(self):
+class ThreadPoolExecutorWithQueueSizeLimit(ThreadPoolExecutor):
+    def __init__(self, max_workers=None, *args, **kwargs):
+        super().__init__(max_workers, *args, **kwargs)
+        self._work_queue = queue.Queue(max_workers * 2)
+
+
+class M3U8Download(object):
+    def __init__(self, m3u8_url=None, m3u8_filename=None, max_retries=5, max_workers=40):
+        self._m3u8_url = m3u8_url
+        self._max_retries = max_retries
+        self._m3u8_ts_list = []
+        self.headers = DEFAULT_HEADERS
+        self.front_url = None
+        self._m3u8_file_name = m3u8_filename
+        self._max_workers = max_workers
+        self.ts_sum = 0
+        self.success_sum = 0
+        self.fetch_m3u8_info(m3u8_url, max_retries)
+        self._chunk_size = 1024
+
+    def fetch_m3u8_info(self, m3u8_url, num_retries):
         """
-        获取 m3u8 的 key
-        :return: 返回 key 和 iv
+        fetch m3u8 data
         """
         try:
-            if self.m3u8_obj.keys[0].uri.startswith('http'):
-                key_context, iv_context = requests.get(self.m3u8_obj.keys[0].uri).content, self.m3u8_obj.keys[0].iv
+            res = requests.get(m3u8_url, timeout=(3, 30), verify=False, headers=self.headers)
+            self.front_url = res.url.split(res.request.path_url)[0]
+            if "EXT-X-STREAM-INF" in res.text:
+                for line in res.text.split('\n'):
+                    if "#" in line or not line:
+                        continue
+                    elif re.search(r'^http', line) is not None:
+                        self._m3u8_url = line
+                    elif re.search(r'^/', line) is not None:
+                        self._m3u8_url = self.front_url + line
+                    else:
+                        self._m3u8_url = self._m3u8_url.rsplit("/", 1)[0] + '/' + line
+                self.fetch_m3u8_info(self._m3u8_url, self._max_retries)
             else:
-                key_context, iv_context = requests.get(self.m3u8_obj.base_uri + self.m3u8_obj.keys[0].uri).content, \
-                                      self.m3u8_obj.keys[0].iv
-            key_context = key_context.decode('utf-8')
+                m3u8_text_str = res.text
+                self.fetch_m3u8_ts_url(m3u8_text_str)
         except Exception as e:
-            _logger.info({
-                'error': e
-            })
-            key_context, iv_context = False, False
+            print(e)
+            if num_retries > 0:
+                self.fetch_m3u8_info(m3u8_url, num_retries - 1)
 
-        return key_context, iv_context.decode('hex') if iv_context else iv_context
-
-    def decrypt_ts_file(self, data):
+    def fetch_m3u8_ts_url(self, m3u8_text_str):
         """
-        解密 ts
-        :param data: 数据
-        :return: AES.MODE_CBC 解密后的数据
+        fetch ts url
         """
-        if self.m3u8_iv:
-            decrypt_obj = AES.new(self.m3u8_key, AES.MODE_CBC, self.m3u8_key, iv=self.m3u8_iv)
-        else:
-            decrypt_obj = AES.new(self.m3u8_key, AES.MODE_CBC, self.m3u8_key)
-        return decrypt_obj.decrypt(data)
-
-    def mkdir_m3u8_file(self):
-        """
-        创建文件夹
-        :return: 文件夹
-        """
-        base_uri = self.m3u8_obj.base_uri
-        base_path = base_uri.replace('/', '').replace(':', '')
-        if not os.path.exists(base_path):
-            os.mkdir(base_path)
-        return base_path + '/'
-
-    def merge_ts_2_mp4(self):
-        """
-        合并ts 为 mp4
-        按照自然排序 ls -1v
-        """
-        os.chdir(self.base_path)
-        if os.path.exists('*.ts'):
-            # ls -1v sort by name
-            merge_file = 'for ts_id in `ls -1v *.ts`; do cat $ts_id >> all.mp4; done'
-            os.system(merge_file)
-            os.system('rm *.ts')
-
-    def download_m3u8_ts_file(self, m3u8_obj_segments):
-        """
-        下载文件
-        :param m3u8_obj_segments: m3u8 ts 段
-        """
-        if m3u8_obj_segments.uri.startswith('http'):
-            ts_link, ts_name = m3u8_obj_segments.uri, m3u8_obj_segments.uri
-        else:
-            ts_link, ts_name = m3u8_obj_segments.base_uri + m3u8_obj_segments.uri, m3u8_obj_segments.uri
-        ts_name = ts_name.replace('/', '_')
-        print('ts_link, ts_name', ts_link, ts_name)
-        with open(self.base_path + ts_name, 'wb') as f:
-            tmp = requests.get(ts_link, headers=headers)
-            tmp_data = tmp.content
-
-            # 解密
-            if self.m3u8_key:
-                decrypt_data = self.decrypt_ts_file(tmp_data)
+        if not os.path.exists(f"./{self._m3u8_file_name}"):
+            os.mkdir(f"./{self._m3u8_file_name}")
+        new_m3u8_str = ''
+        ts = make_sum()
+        for line in m3u8_text_str.split('\n'):
+            if "#" in line:
+                if "EXT-X-KEY" in line and "URI=" in line:
+                    key = self.download_key(line, 5)
+                    if key:
+                        new_m3u8_str += f'{key}\n'
+                        continue
+                new_m3u8_str += f'{line}\n'
+                if "EXT-X-ENDLIST" in line:
+                    break
+            elif re.search(r'^http', line) is not None:
+                new_m3u8_str += f"./{self._m3u8_file_name}/{next(ts)}\n"
+                self._m3u8_ts_list.append(line)
+            elif re.search(r'^/', line) is not None:
+                new_m3u8_str += f"./{self._m3u8_file_name}/{next(ts)}\n"
+                self._m3u8_ts_list.append(self.front_url + line)
             else:
-                decrypt_data = tmp_data
-            _logger.info({
-                'download file: ': ts_name
-            })
-            f.write(decrypt_data)
+                new_m3u8_str += f"./{self._m3u8_file_name}/{next(ts)}\n"
+                self._m3u8_ts_list.append(self._m3u8_url.rsplit("/", 1)[0] + '/' + line)
+        self.ts_sum = next(ts)
+        with open(f"./{self._m3u8_file_name}.m3u8", "w") as f:
+            f.write(new_m3u8_str)
 
-    @property
-    def base_path(self):
-        return self._base_path
-
-    @base_path.setter
-    def base_path(self, base_path):
-        self._base_path = base_path
-
-
-class MultiProcessM3u8Download(M3u8Download):
-    """
-    多进程下载
-    """
-
-    def __init__(self, m3u8_url):
-        super(MultiProcessM3u8Download, self).__init__(m3u8_url)
-
-    @logger_cost_time
-    def download_m3u8_multi_process(self):
+    def download_ts(self, ts_url, save_ts_name, num_retries):
         """
-        多进程下载 Pool(processes=multiprocessing.cpu_count())
+        download ts file
         """
-        pool = Pool(processes=multiprocessing.cpu_count())
+        ts_url = ts_url.split('\n')[0]
+        try:
+            if not os.path.exists(f"./{self._m3u8_file_name}/{save_ts_name}"):
+                res = requests.get(ts_url, stream=True, timeout=(5, 60), verify=False, headers=self.headers)
+                if res.status_code == 200:
+                    with open(f"./{self._m3u8_file_name}/{save_ts_name}", "wb") as ts:
+                        for chunk in res.iter_content(chunk_size=1024):
+                            if chunk:
+                                ts.write(chunk)
+                    self.success_sum += 1
+                    print(f"\rDownloading {self._m3u8_file_name}：{self.success_sum}/{self.ts_sum}\t", end='')
+                else:
+                    self.download_ts(ts_url, save_ts_name, num_retries - 1)
+                res.close()
+            else:
+                self.success_sum += 1
+        except Exception:
+            if os.path.exists(f"./{self._m3u8_file_name}/{save_ts_name}"):
+                os.remove(f"./{self._m3u8_file_name}/{save_ts_name}")
+            if num_retries > 0:
+                self.download_ts(ts_url, save_ts_name, num_retries - 1)
 
-        for m3u8_obj_segments in self.m3u8_obj.segments:
-            pool.apply_async(self.download_m3u8_ts_file, args=(m3u8_obj_segments,))
-        pool.close()
-        pool.join()
-
-
-class MultiThreadingM3u8Download(M3u8Download):
-    """
-    多线程下载
-    """
-
-    def __init__(self, m3u8_url):
-        super(MultiThreadingM3u8Download, self).__init__(m3u8_url)
-
-    @logger_cost_time
-    def download_m3u8_multi_threading(self):
-        # use ThreadPoolExecutor in case too many threader
-        with ThreadPoolExecutor(max_workers=30) as executor:
-            executor.map(self.download_m3u8_ts_file, self.m3u8_obj.segments)
-
-        # thread_ids = []
-        # for m3u8_obj_segments in self.m3u8_obj.segments:
-        #     t = threading.Thread(target=self.download_m3u8_ts_file, args=(m3u8_obj_segments,))
-        #     t.start()
-        #     thread_ids.append(t)
-        # for x in thread_ids:
-        #     x.join()
-
-
-class MultiThreadingQueueM3u8Download(M3u8Download):
-    """
-    多线程队列
-    """
-
-    def __init__(self, m3u8_url):
-        super(MultiThreadingQueueM3u8Download, self).__init__(m3u8_url)
-        self.queue = queue.Queue()
-
-    @logger_cost_time
-    def download_m3u8_multi_threading_queue(self):
+    def download_key(self, key_line, num_retries):
         """
-        多线程下载 queue
-        :return:
+        下载key文件
         """
-        thread_ids = []
-        for m3u8_obj_segments in self.m3u8_obj.segments:
-            t = threading.Thread(target=self.download_m3u8_ts_file_queue, args=(m3u8_obj_segments,))
-            t.start()
-            thread_ids.append(t)
-        for x in thread_ids:
-            x.join()
+        mid_part = re.search(r"URI=[\'|\"].*?[\'|\"]", key_line).group()
+        may_key_url = mid_part[5:-1]
+        if re.search(r'^http', may_key_url) is not None:
+            true_key_url = may_key_url
+        elif re.search(r'^/', may_key_url) is not None:
+            true_key_url = self.front_url + may_key_url
+        else:
+            true_key_url = self._m3u8_url.rsplit("/", 1)[0] + '/' + may_key_url
+        try:
+            res = requests.get(true_key_url, timeout=(5, 60), verify=False, headers=self.headers)
+            with open(f"./{self._m3u8_file_name}/key", 'wb') as f:
+                f.write(res.content)
+            res.close()
+            return f'{key_line.split(mid_part)[0]}URI="./{self._m3u8_file_name}/key"{key_line.split(mid_part)[-1]}'
+        except Exception as e:
+            print(e)
+            if os.path.exists(f"./{self._m3u8_file_name}/key"):
+                os.remove(f"./{self._m3u8_file_name}/key")
+            print("加密视频,无法加载key,揭秘失败")
+            if num_retries > 0:
+                self.download_key(key_line, num_retries - 1)
 
-        result = []
-        while not self.queue.empty():
-            result.append(self.queue.get())
-        print('result: ', result)
-
-    def download_m3u8_ts_file_queue(self, m3u8_obj_segments):
-        ts_link, ts_name = m3u8_obj_segments.base_uri + m3u8_obj_segments.uri, m3u8_obj_segments.uri
-        with open(self.base_path + ts_name, 'wb') as f:
-            tmp = requests.get(ts_link, headers=headers)
-            f.write(tmp.content)
-        self.queue.put(ts_link)
-
-
-class AsyncM3u8Download(M3u8Download):
-    """
-    异步多线程
-    """
-
-    def __init__(self, m3u8_url):
-        super(AsyncM3u8Download, self).__init__(m3u8_url)
-
-    # FIXME: 可能对异步的理解不对
-    async def download_m3u8_ts_file_async(self, ts_link, ts_name):
+    def merge_ts_to_mp4(self):
         """
-        异步下载
-        :param ts_link: 下载的ts链接
-        :param ts_name: 下载的名字
+        合并.ts文件，输出mp4格式视频，需要ffmpeg
         """
+        cmd = f"ffmpeg -allowed_extensions ALL -i {self._m3u8_file_name}.m3u8 -acodec copy -vcodec copy -f mp4 {self._m3u8_file_name}.mp4"
+        os.system(cmd)
+        # os.system(f'rm -rf ./{self._m3u8_file_name} ./{self._m3u8_file_name}.m3u8')
+        print(f"Download successfully --> {self._m3u8_file_name}")
+
+    async def save_resp_content_to_file(self, resp, ts_file_obj):
+        while True:
+            chunk_file = await resp.content.read(self._chunk_size)
+            if not chunk_file:
+                break
+            ts_file_obj.write(chunk_file)
+
+    async def _m3u8_download_ts(self, ts_url, save_ts_name, max_retry):
         async with aiohttp.ClientSession() as session:
-            async with session.request('GET', ts_link, headers=headers) as resp:
-                with open(self.base_path + ts_name + '.ts', 'wb') as f:
-                    tmp = await resp.read()
-                    f.write(tmp)
+            async with session.get(ts_url) as resp:
+                if resp.status == 200:
+                    with open(f"./{self._m3u8_file_name}/{save_ts_name}", "wb") as ts:
+                        await self.save_resp_content_to_file(resp, ts)
+
+                    self.success_sum += 1
+                    print(f"\rDownloading {self._m3u8_file_name}：{self.success_sum}/{self.ts_sum}\t", end='')
+                else:
+                    self.download_ts(ts_url, save_ts_name, max_retry - 1)
+                resp.close()
+
+    async def m3u8_download_ts(self, ts_url, save_ts_name, max_retry):
+        try:
+            ts_url = ts_url.split('\n')[0]
+            if not os.path.exists(f"./{self._m3u8_file_name}/{save_ts_name}"):
+                await self._m3u8_download_ts(ts_url, save_ts_name, max_retry)
+            else:
+                self.success_sum += 1
+        except Exception as e:
+            if os.path.exists(f"./{self._m3u8_file_name}/{save_ts_name}"):
+                os.remove(f"./{self._m3u8_file_name}/{save_ts_name}")
+            if max_retry > 0:
+                await self.m3u8_download_ts(ts_url, save_ts_name, max_retry - 1)
+
+    async def main(self, ts_url, index_ts, sem):
+        async with sem:
+            await self.m3u8_download_ts(ts_url, index_ts, self._max_retries)
 
     @logger_cost_time
-    def main_download_m3u8(self):
-        """
-        下载的入口
-        """
-        tasks = []
+    def start_download(self):
         loop = asyncio.get_event_loop()
-        for m3u8_obj_segments in self.m3u8_obj.segments:
-            ts_link, ts_name = m3u8_obj_segments.base_uri + m3u8_obj_segments.uri, m3u8_obj_segments.uri
-            tasks.append(self.download_m3u8_ts_file_async(ts_link, ts_name))
-        loop.run_until_complete(asyncio.wait(tasks))
-        loop.close()
+        _sem = asyncio.Semaphore(self._max_workers)
+        tasks = []
+        for _index_ts, _ts_url in enumerate(self._m3u8_ts_list):
+            tasks.append(
+                loop.create_task(self.main(_ts_url, _index_ts, _sem))
+            )
+        loop.run_until_complete(asyncio.gather(*tasks))
 
 
 if __name__ == '__main__':
-
     try:
         m3u8_link = sys.argv[1]
+        m3u8_filename = sys.argv[2]
     except IndexError:
         m3u8_link = 'https://bk.andisk.com/data/3048aa1f-b2fb-4fb7-b452-3ebc96c76374/res/' \
                     'f1826fdb-def2-4dba-a7a1-4afbf5d17491.m3u8'
+        m3u8_filename = str(time.time())
         # m3u8_link = 'https://v.zdubo.com/20200115/FkoHzMWM/index.m3u8'
 
-    # # 多进程下载
-    # downloader = MultiProcessM3u8Download(m3u8_link)
-    # downloader.download_m3u8_multi_process()
-    # downloader.merge_ts_2_mp4()
-
-    # # 多线程下载
-    downloader = MultiThreadingM3u8Download(m3u8_link)
-    downloader.download_m3u8_multi_threading()
-    downloader.merge_ts_2_mp4()
-
-    # # 多线程队列
-    # downloader = MultiThreadingQueueM3u8Download(m3u8_link)
-    # downloader.download_m3u8_multi_threading_queue()
-    # downloader.merge_ts_2_mp4()
-
-    # # 异步多线程
-    # downloader = AsyncM3u8Download(m3u8_link)
-    # downloader.main_download_m3u8()
-    # downloader.merge_ts_2_mp4()
+    download_client = M3U8Download(m3u8_url=m3u8_link, m3u8_filename=m3u8_filename, max_retries=5, max_workers=120)
+    download_client.start_download()
