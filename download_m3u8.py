@@ -172,12 +172,18 @@ class M3U8Download(object):
 
     def merge_ts_to_mp4(self):
         """
-        合并.ts文件，输出mp4格式视频，需要ffmpeg
+        merge ts file to mp4
+        ffmpeg
         """
-        cmd = f"ffmpeg -allowed_extensions ALL -i {self._m3u8_file_name}.m3u8 -acodec copy -vcodec copy -f mp4 {self._m3u8_file_name}.mp4"
+        cmd = 'ffmpeg -allowed_extensions ALL -i {file_name}.m3u8 ' \
+              '-acodec copy -vcodec copy -f mp4 {file_name}.mp4'.format(
+                file_name=self._m3u8_file_name
+        )
         os.system(cmd)
-        # os.system(f'rm -rf ./{self._m3u8_file_name} ./{self._m3u8_file_name}.m3u8')
-        print(f"Download successfully --> {self._m3u8_file_name}")
+        os.system(f'rm -rf ./{self._m3u8_file_name} ./{self._m3u8_file_name}.m3u8')
+        print('Download successfully --> {file_name}'.format(
+            file_name=self._m3u8_file_name
+        ))
 
     async def save_resp_content_to_file(self, resp, ts_file_obj):
         while True:
@@ -240,3 +246,4 @@ if __name__ == '__main__':
 
     download_client = M3U8Download(m3u8_url=m3u8_link, m3u8_filename=m3u8_filename, max_retries=5, max_workers=120)
     download_client.start_download()
+    download_client.merge_ts_to_mp4()
