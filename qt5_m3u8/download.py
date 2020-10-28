@@ -44,7 +44,7 @@ class DownloadM3U8QtUI(QMainWindow, Ui_MainWindow):
         self._chunk_size = 1024
         self.headers = DEFAULT_HEADERS
 
-        self.model_table_list = ''
+        self.model_table_list = QStandardItemModel(0, 3)
 
         self.initial_download_table()
 
@@ -86,7 +86,7 @@ class DownloadM3U8QtUI(QMainWindow, Ui_MainWindow):
         QMessageBox.information(self, '提示', '选中: {}'.format(select_data))
 
     def parse_download_ts_list(self):
-        self.fetch_ts_info_from_file(self._max_retries)
+        self.fetch_m3u8_ts_info(self._max_retries)
         self.set_download_table_view()
 
     async def _start_download_ts_file(self, ts_url, file_name, max_sem):
@@ -109,21 +109,72 @@ class DownloadM3U8QtUI(QMainWindow, Ui_MainWindow):
 
         asyncio.ensure_future(self._start_download_file(), loop=loop)
 
+    def merge_ts_to_mp4(self):
+
+        new_m3u8_file = self.get_new_m3u8_file()
+        merge_mp4_file = self.get_m3u8_ts_merge_mp4_file()
+
+        file_folder = self.get_save_ts_file_folder()
+
+        merge_cmd = 'ffmpeg -allowed_extensions ALL -i {new_m3u8_file} ' \
+              '-acodec copy -vcodec copy -f mp4 {merge_mp4_file}'.format(
+            new_m3u8_file=new_m3u8_file,
+            merge_mp4_file=merge_mp4_file
+        )
+        os.system(merge_cmd)
+        # os.system(f'rm -rf {file_folder} {new_m3u8_file}')
+
+    def fetch_m3u8_ts_info(self, max_retries):
+        if self.download_url_input.text():
+            m3u8_url = self.download_url_input.text()
+            self.fetch_ts_info_from_url(m3u8_url, max_retries)
+        else:
+            self.fetch_ts_info_from_file(max_retries)
+
+    def fetch_ts_info_from_url(self, m3u8_url, max_retries):
+        try:
+            res = requests.get(m3u8_url, timeout=(3, 30), verify=False, headers=self.headers)
+            self.front_url = res.url.split(res.request.path_url)[0]
+            if "EXT-X-STREAM-INF" in res.text:
+                for line in res.text.split('\n'):
+                    if "#" in line or not line:
+                        continue
+                    elif re.search(r'^http', line) is not None:
+                        self._m3u8_url = line
+                    elif re.search(r'^/', line) is not None:
+                        self._m3u8_url = self.front_url + line
+                    else:
+                        self._m3u8_url = self._m3u8_url.rsplit("/", 1)[0] + '/' + line
+                self.fetch_ts_info_from_url(self._m3u8_url, self._max_retries)
+            else:
+                m3u8_text_str = res.content
+                self.fetch_m3u8_ts_url(m3u8_text_str)
+        except Exception as e:
+            print(e)
+            if max_retries > 0:
+                self.fetch_ts_info_from_url(m3u8_url, max_retries - 1)
+
     def fetch_ts_info_from_file(self, max_retries):
         try:
             res_content = open('/home/1di0t/Videos/合并报表2.m3u8', 'r')
             res_content = res_content.read()
-
             self.fetch_m3u8_ts_url(res_content)
         except Exception as e:
             if max_retries > 0:
                 self.fetch_ts_info_from_file(max_retries - 1)
 
-    def get_ts_file_folder(self):
+    def get_save_ts_file_folder(self):
         if not self.download_file_path_input.text():
             file_path_name = './{}'.format(self._m3u8_file_name)
         else:
             file_path_name = '{}/{}'.format(self.download_file_path_input.text(), self._m3u8_file_name)
+        return file_path_name
+
+    def get_m3u8_ts_merge_mp4_file(self):
+        if not self.download_file_path_input.text():
+            file_path_name = './{}.mp4'.format(self._m3u8_file_name)
+        else:
+            file_path_name = '{}/{}.mp4'.format(self.download_file_path_input.text(), self._m3u8_file_name)
         return file_path_name
 
     def get_new_m3u8_file(self):
@@ -137,7 +188,7 @@ class DownloadM3U8QtUI(QMainWindow, Ui_MainWindow):
         """
         fetch ts url
         """
-        file_folder = self.get_ts_file_folder()
+        file_folder = self.get_save_ts_file_folder()
         new_m3u8_file = self.get_new_m3u8_file()
         if not os.path.exists(file_folder):
             os.mkdir(file_folder)
