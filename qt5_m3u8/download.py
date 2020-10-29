@@ -112,7 +112,7 @@ class DownloadM3U8QtUI(QMainWindow, Ui_MainWindow):
         asyncio.ensure_future(self._start_download_file(), loop=loop)
 
     def merge_m3u8_ts_2_mp4(self):
-        if int(self.download_progress.text()) != 100:
+        if self.download_progress.text() != '100%':
             QMessageBox.warning(self, 'Wait a minute...', '稍等片刻，还在下载...')
         else:
             self.merge_ts_to_mp4()
