@@ -112,7 +112,7 @@
    <widget class="QPushButton" name="start_download_button">
     <property name="geometry">
      <rect>
-      <x>630</x>
+      <x>520</x>
       <y>510</y>
       <width>103</width>
       <height>36</height>
@@ -169,6 +169,19 @@
     </property>
     <property name="text">
      <string>128</string>
+    </property>
+   </widget>
+   <widget class="QPushButton" name="button_merge_ts_to_mp4">
+    <property name="geometry">
+     <rect>
+      <x>640</x>
+      <y>510</y>
+      <width>103</width>
+      <height>36</height>
+     </rect>
+    </property>
+    <property name="text">
+     <string>Merge</string>
     </property>
    </widget>
   </widget>
