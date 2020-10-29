@@ -114,8 +114,8 @@ class DownloadM3U8QtUI(QMainWindow, Ui_MainWindow):
     def merge_m3u8_ts_2_mp4(self):
         if self.download_progress_label.text() != 100:
             QMessageBox.warning(self, 'Wait a minute...', '稍等片刻，还在下载...')
-
-        self.merge_ts_to_mp4()
+        else:
+            self.merge_ts_to_mp4()
 
     def merge_ts_to_mp4(self):
 
@@ -155,7 +155,7 @@ class DownloadM3U8QtUI(QMainWindow, Ui_MainWindow):
                         self._m3u8_url = self._m3u8_url.rsplit("/", 1)[0] + '/' + line
                 self.fetch_ts_info_from_url(self._m3u8_url, self._max_retries)
             else:
-                m3u8_text_str = res.content
+                m3u8_text_str = res.text
                 self.fetch_m3u8_ts_url(m3u8_text_str)
         except Exception as e:
             print(e)
