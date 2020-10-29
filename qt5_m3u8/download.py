@@ -54,6 +54,8 @@ class DownloadM3U8QtUI(QMainWindow, Ui_MainWindow):
 
         self.download_file_name_input.textChanged.connect(self.update_download_m3u8_file_name)
 
+        self.button_merge_ts_to_mp4.clicked.connect(self.merge_m3u8_ts_2_mp4)
+
     def get_default_model_table_list(self):
         model_table_list = QStandardItemModel(0, 3)
         model_table_list.setHorizontalHeaderLabels(TS_HEADERS)
@@ -108,6 +110,12 @@ class DownloadM3U8QtUI(QMainWindow, Ui_MainWindow):
         self.parse_download_ts_list()
 
         asyncio.ensure_future(self._start_download_file(), loop=loop)
+
+    def merge_m3u8_ts_2_mp4(self):
+        if self.download_progress_label.text() != 100:
+            QMessageBox.warning(self, 'Wait a minute...', '稍等片刻，还在下载...')
+
+        self.merge_ts_to_mp4()
 
     def merge_ts_to_mp4(self):
 
