@@ -92,16 +92,14 @@ class DownloadM3U8QtUI(QMainWindow, Ui_MainWindow):
         self.set_download_table_view()
 
     async def _start_download_ts_file(self, ts_url, file_name, max_sem):
-        # async with max_sem:
-        await self.m3u8_download_ts(ts_url, file_name, self._max_retries)
+        async with max_sem:
+            await self.m3u8_download_ts(ts_url, file_name, self._max_retries)
 
     async def _start_download_file(self):
         max_sem = asyncio.Semaphore(self._max_workers)
         tasks = []
         for _index_ts, _ts_url in enumerate(self._m3u8_ts_list):
             tasks.append(asyncio.ensure_future(self._start_download_ts_file(_ts_url, _index_ts, max_sem)))
-
-        # loop.run_until_complete(asyncio.gather(*tasks))
 
     def start_download_file(self):
         self.update_download_m3u8_file_name()
