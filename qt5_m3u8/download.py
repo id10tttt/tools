@@ -78,6 +78,7 @@ class DownloadM3U8QtUI(QMainWindow, Ui_MainWindow):
 
         self.download_progress.setValue(0)
 
+    # 下载文件的保存路径
     def open_folder(self):
         directory = QFileDialog.getExistingDirectory(self, '选择文件夹')
         self.download_file_path_input.setText(directory)
@@ -101,6 +102,7 @@ class DownloadM3U8QtUI(QMainWindow, Ui_MainWindow):
         for _index_ts, _ts_url in enumerate(self._m3u8_ts_list):
             tasks.append(asyncio.ensure_future(self._start_download_ts_file(_ts_url, _index_ts, max_sem)))
 
+    # 开始下载
     def start_download_file(self):
         self.update_download_m3u8_file_name()
         self.update_download_max_workers()
@@ -109,6 +111,7 @@ class DownloadM3U8QtUI(QMainWindow, Ui_MainWindow):
 
         asyncio.ensure_future(self._start_download_file(), loop=loop)
 
+    # 合并TS 为 MP4, 使用 ffmpeg
     def merge_m3u8_ts_2_mp4(self):
         if self.download_progress.text() != '100%':
             QMessageBox.warning(self, 'Wait a minute...', '稍等片刻，还在下载...')
@@ -156,7 +159,6 @@ class DownloadM3U8QtUI(QMainWindow, Ui_MainWindow):
                 m3u8_text_str = res.text
                 self.fetch_m3u8_ts_url(m3u8_text_str)
         except Exception as e:
-            print(e)
             if max_retries > 0:
                 self.fetch_ts_info_from_url(m3u8_url, max_retries - 1)
 
