@@ -30,14 +30,27 @@
    <widget class="QPushButton" name="guessNumberButton">
     <property name="geometry">
      <rect>
-      <x>50</x>
-      <y>120</y>
+      <x>320</x>
+      <y>50</y>
       <width>87</width>
       <height>27</height>
      </rect>
     </property>
     <property name="text">
      <string>猜数字</string>
+    </property>
+   </widget>
+   <widget class="QPushButton" name="downloadM3u8Button">
+    <property name="geometry">
+     <rect>
+      <x>600</x>
+      <y>50</y>
+      <width>87</width>
+      <height>27</height>
+     </rect>
+    </property>
+    <property name="text">
+     <string>下载M3U8</string>
     </property>
    </widget>
   </widget>

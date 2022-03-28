@@ -1,13 +1,11 @@
 # -*- coding: utf-8 -*-
 
 import sys
-from PySide2.QtWidgets import QApplication, QWidget, QMessageBox, QAbstractItemView
+from PySide2.QtWidgets import QApplication, QWidget, QMessageBox, QAbstractItemView, QFileDialog, QMainWindow
 from PySide2 import QtCore
-from PyQt5.QtCore import QStringListModel, QAbstractItemModel
-from PyQt5.QtWidgets import QFileDialog
-from PyQt5.QtGui import QStandardItem
+from PyQt5.QtCore import QStringListModel
 from PySide2.QtUiTools import QUiLoader
-from PySide2.QtGui import QStandardItemModel
+from PySide2.QtGui import QStandardItemModel, QStandardItem
 import math
 import asyncio
 import aiohttp
@@ -81,7 +79,7 @@ class DownloadM3U8QtUI(QWidget):
 
     # 下载文件的保存路径
     def open_folder(self):
-        directory = QFileDialog.getExistingDirectory(self, '选择文件夹')
+        directory = QFileDialog.getExistingDirectory()
         self.ui.download_file_path_input.setText(directory)
         self.initial_download_table()
 
@@ -334,12 +332,7 @@ class DownloadM3U8QtUI(QWidget):
                 await self.m3u8_download_ts(ts_url, save_ts_name, max_retry - 1)
 
     def initial_page(self):
-        download_app = QApplication(sys.argv)
-        loop = QEventLoop(download_app)
-        asyncio.set_event_loop(loop)
         self.ui.show()
-        while loop:
-            loop.run_forever()
 
 
 if __name__ == '__main__':
