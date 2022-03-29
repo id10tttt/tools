@@ -17,7 +17,7 @@
    <widget class="QPushButton" name="computeDayButton">
     <property name="geometry">
      <rect>
-      <x>50</x>
+      <x>80</x>
       <y>50</y>
       <width>87</width>
       <height>27</height>
@@ -30,7 +30,7 @@
    <widget class="QPushButton" name="guessNumberButton">
     <property name="geometry">
      <rect>
-      <x>320</x>
+      <x>350</x>
       <y>50</y>
       <width>87</width>
       <height>27</height>
@@ -43,7 +43,7 @@
    <widget class="QPushButton" name="downloadM3u8Button">
     <property name="geometry">
      <rect>
-      <x>600</x>
+      <x>630</x>
       <y>50</y>
       <width>87</width>
       <height>27</height>
