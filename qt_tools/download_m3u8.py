@@ -5,6 +5,7 @@ from PySide2.QtWidgets import QApplication, QWidget, QMessageBox, QAbstractItemV
 from PyQt5.QtCore import QStringListModel
 from PySide2.QtUiTools import QUiLoader
 from PySide2.QtGui import QStandardItemModel, QStandardItem
+from PySide2 import QtCore
 import math
 import asyncio
 import aiohttp
@@ -16,7 +17,6 @@ import requests
 import time
 
 _logger = logging.getLogger(__name__)
-
 
 DEFAULT_HEADERS = {
     'User-Agent': 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/99.0.4844.84 Safari/537.36'
@@ -57,6 +57,8 @@ class DownloadM3U8QtUI(QWidget):
         self.ui.download_file_name_input.textChanged.connect(self.update_download_m3u8_file_name)
 
         self.ui.button_merge_ts_to_mp4.clicked.connect(self.merge_m3u8_ts_2_mp4)
+        # self.loop = QEventLoop()
+        # asyncio.set_event_loop(self.loop)
 
     def get_default_model_table_list(self):
         model_table_list = QStandardItemModel(0, 3)
@@ -97,23 +99,32 @@ class DownloadM3U8QtUI(QWidget):
 
     async def _start_download_ts_file(self, ts_url, file_name, max_sem):
         async with max_sem:
-            await self.m3u8_download_ts(ts_url, file_name, self._max_retries)
+            return await self.m3u8_download_ts(ts_url, file_name, self._max_retries)
 
     def _start_download_file(self):
-        max_sem = asyncio.Semaphore(self._max_workers, loop=loop)
+        max_sem = asyncio.Semaphore(self._max_workers)
         tasks = []
         for _index_ts, _ts_url in enumerate(self._m3u8_ts_list):
-            tasks.append(loop.create_task(self._start_download_ts_file(_ts_url, _index_ts, max_sem)))
-            # tasks.append(
-            #     asyncio.ensure_future(self._start_download_ts_file(_ts_url, _index_ts, max_sem), loop=current_loop))
+            tasks.append(
+                asyncio.ensure_future(self._start_download_ts_file(_ts_url, _index_ts, max_sem)))
+        loop = asyncio.get_event_loop()
+        loop.run_until_complete(asyncio.wait(tasks))
+        execute_results = []
+        for task in tasks:
+            execute_results.append(task.result())
+        loop.close()
+        self.ui.start_download_button.setEnabled(True)
+        self.ui.button_merge_ts_to_mp4.setEnabled(True)
+        self.msg_notifaction('下载成功', execute_results, success_state=True)
 
     # 开始下载
     def start_download_file(self):
+        self.ui.start_download_button.setEnabled(False)
+        self.ui.button_merge_ts_to_mp4.setEnabled(False)
         self.update_download_m3u8_file_name()
         self.update_download_max_workers()
 
         self.parse_download_ts_list()
-
         self._start_download_file()
 
     # 合并TS 为 MP4, 使用 ffmpeg
@@ -123,9 +134,12 @@ class DownloadM3U8QtUI(QWidget):
         else:
             self.merge_ts_to_mp4()
 
-    def msg_notifaction(self, notif_msg, detail_msg):
+    def msg_notifaction(self, notif_msg, detail_msg, success_state=False):
         msg_box = QMessageBox()
-        msg_box.setIcon(QMessageBox.Warning)
+        if success_state:
+            msg_box.setIcon(QMessageBox.Information)
+        else:
+            msg_box.setIcon(QMessageBox.Warning)
         msg_box.setText('{}'.format(notif_msg))
         msg_box.setDetailedText('{}'.format(detail_msg))
         msg_box.setStandardButtons(QMessageBox.Ok | QMessageBox.Cancel)
@@ -174,7 +188,7 @@ class DownloadM3U8QtUI(QWidget):
                 m3u8_text_str = res.text
                 self.fetch_m3u8_ts_url(m3u8_text_str)
         except Exception as e:
-            _logger.error('error: {}'.format(e))
+            _logger.error('{} error: {}'.format(m3u8_url, e))
             if max_retries > 0:
                 self.fetch_ts_info_from_url(m3u8_url, max_retries - 1)
 
@@ -331,24 +345,32 @@ class DownloadM3U8QtUI(QWidget):
                 await self._m3u8_download_ts(ts_url, save_ts_name, max_retry)
             else:
                 self.success_sum += 1
+                self.update_download_process_property(self.success_sum)
+            return ts_url
         except Exception as e:
+            _logger.error('{}, error: {}'.format(ts_url, e))
             file_path_name = self.get_ts_file_name_with_path(save_ts_name)
             if os.path.exists(file_path_name):
                 os.remove(file_path_name)
             if max_retry > 0:
                 await self.m3u8_download_ts(ts_url, save_ts_name, max_retry - 1)
+            return e
 
     def initial_page(self):
         self.ui.show()
 
 
 if __name__ == '__main__':
+    QtCore.QCoreApplication.setAttribute(QtCore.Qt.AA_ShareOpenGLContexts)
     download_app = QApplication(sys.argv)
-    loop = QEventLoop(download_app)
-    asyncio.set_event_loop(loop)
+    # loop = QEventLoop(download_app)
+    # asyncio.set_event_loop(loop)
 
     download_windows = DownloadM3U8QtUI()
     download_windows.ui.show()
-
-    while loop:
-        loop.run_forever()
+    download_windows.ui.download_url_input.setText('https://s3.fsvod1.com/20220225/aoYBKlCA/index.m3u8')
+    download_windows.ui.download_file_name_input.setText('测试')
+    download_windows.ui.download_file_path_input.setText('/home/jx/Videos/测试')
+    # while loop:
+    #     loop.run_forever()
+    download_app.exec_()
