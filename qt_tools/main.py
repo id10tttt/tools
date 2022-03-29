@@ -5,7 +5,7 @@ from PySide2 import QtCore
 from PySide2.QtUiTools import QUiLoader
 from compute_day import ComputeTools
 from about import About
-from guess_game import GuessNumberGame
+from guess_number import GuessNumberGame
 from download_m3u8 import DownloadM3U8QtUI
 
 
