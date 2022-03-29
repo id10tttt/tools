@@ -9,7 +9,6 @@ from PySide2 import QtCore
 import math
 import asyncio
 import aiohttp
-from asyncqt import QEventLoop
 import re
 import logging
 import os
