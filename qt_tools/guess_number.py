@@ -18,6 +18,8 @@ class GuessNumberGame(QWidget):
         self.ui.notificationLabel.setText('Shall we? Let\'s dance *_*')
         self.ui.guessNumberEdit.clear()
         self.ui.textBrowser.clear()
+        self.last_bigger_number = 100
+        self.last_smaller_number = 1
 
     def guess_win_or_lose(self):
         guess_number = self.ui.guessNumberEdit.text()
@@ -31,19 +33,28 @@ class GuessNumberGame(QWidget):
         except Exception as e:
             self.msg_notifaction(e)
 
-        if guess_number > self.initial_number:
-            self.last_bigger_number = guess_number
+        if guess_number > self.initial_number and guess_number > self.last_bigger_number:
             self.ui.notificationLabel.setText(
                 '搞这么大干啥: {}\n介于： {} ～ {} 好不好'.format(guess_number, self.last_smaller_number, self.last_bigger_number))
             self.ui.textBrowser.append(str(guess_number))
-        elif guess_number < self.initial_number:
+        elif self.initial_number < guess_number < self.last_bigger_number:
+            self.last_bigger_number = guess_number
+            self.ui.notificationLabel.setText(
+                '搞这么大干啥: {}\n介于： {} ～ {} 好不好'.format(guess_number, self.last_smaller_number, self.last_bigger_number))
+        elif guess_number < self.initial_number and guess_number < self.last_smaller_number:
+            self.ui.notificationLabel.setText(
+                '啧啧啧，这么小: {}\n介于： {} ～ {} 好不好'.format(guess_number, self.last_smaller_number, self.last_bigger_number))
+            self.ui.textBrowser.append(str(guess_number))
+        elif self.last_smaller_number < guess_number < self.initial_number:
             self.last_smaller_number = guess_number
             self.ui.notificationLabel.setText(
                 '啧啧啧，这么小: {}\n介于： {} ～ {} 好不好'.format(guess_number, self.last_smaller_number, self.last_bigger_number))
             self.ui.textBrowser.append(str(guess_number))
-        else:
+        elif guess_number == self.initial_number:
             self.ui.notificationLabel.setText('哦哟哦哟，牛逼: {}'.format(guess_number))
             self.ui.textBrowser.append(str(guess_number))
+        else:
+            self.ui.notificationLabel.setText('Ooooooppps')
 
     def msg_notifaction(self, err_msg):
         msg_box = QMessageBox()
