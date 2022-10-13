@@ -45,7 +45,7 @@ class BingDownload(object):
             res_dict = await resp.json()
             for image_id in res_dict.get('images'):
                 image_urlbase = image_id.get('urlbase')
-                start_date = image_id.get('startdate')
+                # start_date = image_id.get('startdate')
                 if image_urlbase not in self.download_list:
                     self.download_list.append(image_urlbase)
                     await self.download_bing_picture(image_urlbase, session)
@@ -58,8 +58,10 @@ class BingDownload(object):
         file_name = await self.get_file_name(file_name)
         resp = await session.get(bing_download_url)
         content = await resp.read()
-        with open(file_name, 'wb') as f:
-            f.write(content)
+        if not os.path.exists(file_name):
+            print('save image: {}'.format(file_name))
+            with open(file_name, 'wb') as f:
+                f.write(content)
 
 
 if __name__ == '__main__':
