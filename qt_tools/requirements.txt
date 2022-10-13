@@ -1,0 +1,4 @@
+requests
+aiohttp
+PyQt5
+PySide2
