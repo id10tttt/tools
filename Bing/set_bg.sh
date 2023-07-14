@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
 BASE_DIR="${HOME}/Pictures/Bing/"
+BASE_DIR="/home/jx/Pictures/Bing/"
 
 set_background() {
   random_pic_name=$(ls $BASE_DIR | shuf -n1)
