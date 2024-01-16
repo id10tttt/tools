@@ -41,6 +41,7 @@ class GuessNumberGame(QWidget):
             self.last_bigger_number = guess_number
             self.ui.notificationLabel.setText(
                 '搞这么大干啥: {}\n介于： {} ～ {} 好不好'.format(guess_number, self.last_smaller_number, self.last_bigger_number))
+            self.ui.textBrowser.append(str(guess_number))
         elif guess_number < self.initial_number and guess_number < self.last_smaller_number:
             self.ui.notificationLabel.setText(
                 '啧啧啧，这么小: {}\n介于： {} ～ {} 好不好'.format(guess_number, self.last_smaller_number, self.last_bigger_number))
