@@ -4,11 +4,13 @@ import aiohttp
 import asyncio
 import time
 import os
+import logging
 
 BASE_URL = 'http://www.bing.com'
 DAILY_BING_IMAGE_URL = 'http://www.bing.com/HPImageArchive.aspx?format=js&idx=0&n=8&mkt=zh-CN'
 IMAGE_TAIL = '_1920x1080.jpg'
 
+_logger = logging.getLogger(__name__)
 
 BASE_HOME = os.environ['HOME']
 BING_IMG_SAVE_PATH = '{}/Pictures/Bing/'.format(BASE_HOME)
@@ -60,13 +62,14 @@ class BingDownload(object):
         resp = await session.get(bing_download_url)
         content = await resp.read()
         if not os.path.exists(file_name):
-            print('save image: {}'.format(file_name))
+            _logger.info('保存图片: {}'.format(file_name))
             with open(file_name, 'wb') as f:
                 f.write(content)
 
 
 if __name__ == '__main__':
+    logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
     start_time = time.time()
     bing_downloader = BingDownload()
     asyncio.run(bing_downloader.main())
-    print('cost: {}'.format(time.time() - start_time))
+    _logger.info('耗时: {}'.format(time.time() - start_time))
