@@ -8,7 +8,7 @@ import os
 BASE_URL = 'http://www.bing.com'
 DAILY_BING_IMAGE_URL = 'http://www.bing.com/HPImageArchive.aspx?format=js&idx=0&n=8&mkt=zh-CN'
 IMAGE_TAIL = '_1920x1080.jpg'
-BING_IMG_SAVE_PATH='/home/1di0t/Pictures/'
+BING_IMG_SAVE_PATH = '/home/ylscm/Pictures/'
 
 
 class BingDownload(object):
