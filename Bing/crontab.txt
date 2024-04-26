@@ -1,3 +1,8 @@
+<<<<<<< HEAD
 0 10 * * * python3 /home/1di0t/Desktop/downloader/tools/bing.py
 */1 * * * * DBUS_SESSION_BUS_ADDRESS=unix:path=/run/user/1000/bus /usr/bin/bash /home/1di0t/Pictures/set_bg.sh
+=======
+0 10 * * * python3 /home/jx/tools/Bing/bing.py
+*/1 * * * * /usr/bin/bash /home/jx/tools/Bing/set_bg.sh
+>>>>>>> cd066d8809bc38979b7cdb910e14fd24df70d9e6
 

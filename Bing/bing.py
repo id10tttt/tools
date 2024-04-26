@@ -8,7 +8,10 @@ import os
 BASE_URL = 'http://www.bing.com'
 DAILY_BING_IMAGE_URL = 'http://www.bing.com/HPImageArchive.aspx?format=js&idx=0&n=8&mkt=zh-CN'
 IMAGE_TAIL = '_1920x1080.jpg'
-BING_IMG_SAVE_PATH = '/home/ylscm/Pictures/'
+
+
+BASE_HOME = os.environ['HOME']
+BING_IMG_SAVE_PATH = '{}/Pictures/Bing/'.format(BASE_HOME)
 
 
 class BingDownload(object):
@@ -19,9 +22,10 @@ class BingDownload(object):
         self.base_download_path = BING_IMG_SAVE_PATH
 
     async def get_file_save_path(self):
-        if not os.path.exists(self.base_download_path + '/Bing'):
-            os.mkdir(self.base_download_path + '/Bing')
-        return self.base_download_path + '/Bing/'
+        img_path = self.base_download_path
+        if not os.path.exists(img_path):
+            os.makedirs(img_path)
+        return img_path
 
     async def get_file_name(self, file_name):
         file_path = await self.get_file_save_path()
@@ -42,7 +46,7 @@ class BingDownload(object):
             res_dict = await resp.json()
             for image_id in res_dict.get('images'):
                 image_urlbase = image_id.get('urlbase')
-                start_date = image_id.get('startdate')
+                # start_date = image_id.get('startdate')
                 if image_urlbase not in self.download_list:
                     self.download_list.append(image_urlbase)
                     await self.download_bing_picture(image_urlbase, session)
@@ -55,15 +59,14 @@ class BingDownload(object):
         file_name = await self.get_file_name(file_name)
         resp = await session.get(bing_download_url)
         content = await resp.read()
-        with open(file_name, 'wb') as f:
-            f.write(content)
+        if not os.path.exists(file_name):
+            print('save image: {}'.format(file_name))
+            with open(file_name, 'wb') as f:
+                f.write(content)
 
 
 if __name__ == '__main__':
     start_time = time.time()
-    loop = asyncio.get_event_loop()
     bing_downloader = BingDownload()
-    asyncio_sem = asyncio.Semaphore(1)
-    task = loop.create_task(bing_downloader.main())
-    loop.run_until_complete(task)
+    asyncio.run(bing_downloader.main())
     print('cost: {}'.format(time.time() - start_time))
