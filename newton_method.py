@@ -21,19 +21,23 @@
 
 def newton_method(xn_value, loop_time, a_value):
     for _ in range(loop_time):
-        xn_value = 1/2 * (xn_value + a_value / xn_value)
+        xn_value = 1 / 2 * (xn_value + a_value / xn_value)
         print(xn_value)
+
 
 def newton_method_power(xn_value, loop_time, a_value, power_value=2):
     for _ in range(loop_time):
-        xn_value = ((power_value - 1) / power_value) * xn_value + a_value / (power_value * (xn_value ** (power_value - 1)))
+        xn_value = ((power_value - 1) / power_value) * xn_value + a_value / (
+                    power_value * (xn_value ** (power_value - 1)))
         print(xn_value)
+
 
 if __name__ == '__main__':
     a = 3
     newton_method(1, 5, a)
     import math
+
     print('real: {}\n'.format(math.sqrt(a)))
 
     newton_method_power(1, 5, a, 3)
-    print('real: {}\n'.format(math.pow(a, 1/3)))
+    print('real: {}\n'.format(math.pow(a, 1 / 3)))
