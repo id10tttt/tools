@@ -1,8 +1,6 @@
 #!/usr/bin/env bash
 BASE_DIR="${HOME}/Pictures/Bing/"
 
-BASE_DIR='/home/ylscm/Pictures/Bing/'
-
 random_pic_name=$(ls $BASE_DIR | shuf -n1)
 
 random_pic_path=$BASE_DIR$random_pic_name
